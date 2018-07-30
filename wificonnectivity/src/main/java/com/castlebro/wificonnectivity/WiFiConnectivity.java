@@ -62,6 +62,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
     private WiFiStateListener mStateListener;
     private WiFiConnectListener mConnectListener;
     private WifiManager mWifiManager;
+    private ConnectivityManager mConnectivityManager;
 
     private NetworkInfo.DetailedState mOldState = null;
     private WiFi mConnectWifi = null;
@@ -104,7 +105,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
         mConnectListener = ConnectListenerServeObject.remove(mRequesterHashCode);
 
         mWifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-
+        mConnectivityManager = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         if (!isValid()) {
             stopSelf();
             return Service.START_NOT_STICKY;
@@ -119,11 +120,12 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
         registerReceiver(mReceiver, intentFilter);
 
         if (wifi != null) {
-            boolean asdf = connect(wifi);
-            if (asdf) ;
+            connect(wifi);
+        }
+        else{
+            startScan();
         }
 
-        startScan();
         return Service.START_NOT_STICKY;
     }
 
@@ -145,7 +147,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
 
     @Override
     public boolean connect(WiFi wifi) {
-        mConnectWifi = wifi;
+
         if (!isValid()) {
             stopSelf();
             return false;
@@ -153,23 +155,29 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
 
         WifiInfo info = mWifiManager.getConnectionInfo();
         String infoSSID = (info.getSSID() != null) ? (info.getSSID().replaceAll("\"", "")) : ("");
-        //String infoBSSID = (info.getBSSID() != null) ? (info.getBSSID().replaceAll("\"", "")) : ("");
-        if (infoSSID.equals(wifi.getSSID())) {
-            if (mOldState == NetworkInfo.DetailedState.CONNECTED) return true;
-            mOldState = NetworkInfo.DetailedState.CONNECTED;
-
-            if (mConnectListener != null) mConnectListener.onConnected(this, mConnectWifi);
+        String infoBSSID = (info.getBSSID() != null) ? (info.getBSSID().replaceAll("\"", "")) : ("");
+        if (infoSSID.equals(wifi.getSSID()) && infoBSSID.equals(wifi.getBSSID())) {
             return true;
+        }
+        else
+        {
+            mWifiManager.disconnect();
         }
 
         if (mWifiManager.isWifiEnabled()) {
             int netId = BroWiFiConnectivity.getConfiguredNetworkId(this, wifi);
             if (netId == -1) netId = mWifiManager.addNetwork(wifi.getWifiConfiguration());
 
-            return (netId != -1) &&
+            if ((netId != -1) &&
                     mWifiManager.enableNetwork(netId, true) &&
-                    mWifiManager.reconnect();
+                    mWifiManager.reconnect())
+            {
+                mConnectWifi = wifi;
+                mOldState = null;
+                return true;
+            }
         }
+        mConnectWifi = null;
         return false;
     }
 
@@ -228,7 +236,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
     }
 
     private boolean isSupported() {
-        return mWifiManager != null;
+        return (mWifiManager != null) && (mConnectivityManager != null);
     }
 
     private boolean hasRequester() {
@@ -267,6 +275,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
                 if (ConnectivityManager.TYPE_WIFI == info.getType()) {
                     NetworkInfo.DetailedState state = info.getDetailedState();
                     mConnectListener.onDebug(state);
+                    //Log.d("TEST LOG" , state.toString());
                     if (((mOldState == NetworkInfo.DetailedState.AUTHENTICATING) || (mOldState == NetworkInfo.DetailedState.CONNECTING)) &&
                             (state == NetworkInfo.DetailedState.DISCONNECTED))
                     {
@@ -281,11 +290,16 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
                     }
                     else if (state == NetworkInfo.DetailedState.CONNECTED)
                     {
-                        if (mConnectWifi.getSSID().equals(info.getExtraInfo()))
+                        String infoSSID = mWifiManager.getConnectionInfo().getSSID().replaceAll("\"", "");
+                        if (mConnectWifi.getSSID().equals(infoSSID))
                         {
                             mRealityConnect.checkConnected();
                         }
-
+                        else
+                        {
+                            mOldState = null;
+                            return;
+                        }
                     }
                     mOldState = state;
                 }

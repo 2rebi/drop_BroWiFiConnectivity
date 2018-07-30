@@ -42,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
 //                    buf = "";
 //                    results = wifis;
                     for (WiFi data : wifis) {
-                        if (data.getSSID().contains("smart-ca5"))
+                        if (data.getSSID().contains("smart-ca5_165400"))
                         {
                             data.setPassword("22026180");
                             boolean test = data.connect();

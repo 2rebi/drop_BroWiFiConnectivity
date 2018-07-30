@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">WiFiConnectivity</string>
+    <string name="wifi_enable_desc" formatted="false">Allow %s to enable wifi</string>
+    <string name="wifi_enable_allow">ALLOW</string>
+    <string name="wifi_enable_deny">DENY</string>
+</resources>

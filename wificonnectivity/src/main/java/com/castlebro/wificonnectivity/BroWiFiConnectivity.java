@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
@@ -60,6 +61,18 @@ public class BroWiFiConnectivity {
         }
 
         return false;
+    }
+
+    public static boolean isConnected(Context context, WiFi wifi)
+    {
+        WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (wm == null) throw new UnsupportedOperationException("Wifi management is not supported");
+
+        WifiInfo info = wm.getConnectionInfo();
+        String ssid = info.getSSID().replaceAll("\"", "");
+        String bssid = info.getBSSID().replaceAll("\"" , "");
+
+        return ssid.equals(wifi.getSSID()) && bssid.equals(wifi.getBSSID());
     }
 
     private static List<WifiConfiguration> innerGetConfiguredNetworks(WifiManager wm)

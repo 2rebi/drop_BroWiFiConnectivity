@@ -274,7 +274,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
                 NetworkInfo info = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
                 if (ConnectivityManager.TYPE_WIFI == info.getType()) {
                     NetworkInfo.DetailedState state = info.getDetailedState();
-                    mConnectListener.onDebug(state);
+                    //mConnectListener.onDebug(state);
                     //Log.d("TEST LOG" , state.toString());
                     if (((mOldState == NetworkInfo.DetailedState.AUTHENTICATING) || (mOldState == NetworkInfo.DetailedState.CONNECTING)) &&
                             (state == NetworkInfo.DetailedState.DISCONNECTED))

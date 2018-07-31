@@ -87,9 +87,10 @@ public class WiFi implements Parcelable {
 
     public boolean connect() {
         if (mRequester.get() != null)
-            return mRequester.get().connect(this);
-
-        return false;
+            mRequester.get().connect(this);
+        else
+            return false;
+        return true;
     }
 
     public String getSSID()
@@ -101,6 +102,8 @@ public class WiFi implements Parcelable {
     {
         return mWifiConfiguration.BSSID;
     }
+
+    public int getAuthType() { return mPasswordAuthType; }
 
     public WifiConfiguration getWifiConfiguration()
     {

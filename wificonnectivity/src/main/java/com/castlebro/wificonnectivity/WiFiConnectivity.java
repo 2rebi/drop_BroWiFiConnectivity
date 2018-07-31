@@ -112,6 +112,8 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
         }
 
         setEnableWifi(mWifiState);
+        if (mWifiState != WIFI_DEFAULT_DIALOG)
+            requestPermission();
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
@@ -183,13 +185,20 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
 
     @Override
     public void setEnableWifi(int type) {
-        if (type == WIFI_ENABLE) mWifiManager.setWifiEnabled(true);
-        else if (type == WIFI_DISABLE) mWifiManager.setWifiEnabled(false);
+        if (type == WIFI_ENABLE)
+        {
+            mWifiManager.setWifiEnabled(true);
+        }
+        else if (type == WIFI_DISABLE)
+        {
+            mWifiManager.setWifiEnabled(false);
+        }
         else if (type == WIFI_DEFAULT_DIALOG) showEnableWifiDialog();
     }
 
     private void showEnableWifiDialog() {
-        if (mWifiManager.isWifiEnabled() || !(mRequester.get() instanceof Activity)) {
+        if (!(mRequester.get() instanceof Activity)) return;
+        if (mWifiManager.isWifiEnabled()) {
             requestPermission();
             return;
         }
@@ -274,7 +283,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
                 NetworkInfo info = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
                 if (ConnectivityManager.TYPE_WIFI == info.getType()) {
                     NetworkInfo.DetailedState state = info.getDetailedState();
-                    //mConnectListener.onDebug(state);
+                    mConnectListener.onDebug(state);
                     //Log.d("TEST LOG" , state.toString());
                     if (((mOldState == NetworkInfo.DetailedState.AUTHENTICATING) || (mOldState == NetworkInfo.DetailedState.CONNECTING)) &&
                             (state == NetworkInfo.DetailedState.DISCONNECTED))

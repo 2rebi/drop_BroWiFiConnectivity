@@ -20,9 +20,9 @@ import java.util.Map;
 public class WiFi implements Parcelable {
 
     private static final int UNSPECIFIED = -1;
-    private static final int OPEN = 0;
-    private static final int WEB = 1;
-    private static final int WPA = 2;
+    public static final int AUTH_TYPE_OPEN = 0;
+    public static final int AUTH_TYPE_WEB = 1;
+    public static final int AUTH_TYPE_WPA = 2;
 
     private WifiConfiguration mWifiConfiguration;
     private int mPasswordAuthType = UNSPECIFIED;
@@ -84,7 +84,6 @@ public class WiFi implements Parcelable {
         updatePasswordFormat();
     }
 
-
     public boolean connect() {
         if (mRequester.get() != null)
             mRequester.get().connect(this);
@@ -124,21 +123,21 @@ public class WiFi implements Parcelable {
         //capabilities.contains()
 
         if (capabilities.contains("WEB")) {
-            mPasswordAuthType = WEB;
+            mPasswordAuthType = AUTH_TYPE_WEB;
         } else if (capabilities.contains("WPA")) {
-            mPasswordAuthType = WPA;
+            mPasswordAuthType = AUTH_TYPE_WPA;
 
         } else {
-            mPasswordAuthType = OPEN;
+            mPasswordAuthType = AUTH_TYPE_OPEN;
         }
 
         updatePasswordAuthType();
     }
 
     private void updatePasswordFormat() {
-        if (mPasswordAuthType == WPA) {
+        if (mPasswordAuthType == AUTH_TYPE_WPA) {
             this.mWifiConfiguration.preSharedKey = "\"".concat(mPassword).concat("\"");
-        } else if (mPasswordAuthType == WEB) {
+        } else if (mPasswordAuthType == AUTH_TYPE_WEB) {
             this.mWifiConfiguration.wepKeys[0] = "\"".concat(mPassword).concat("\"");
             this.mWifiConfiguration.wepTxKeyIndex = 0;
         }
@@ -146,7 +145,7 @@ public class WiFi implements Parcelable {
 
     private void updatePasswordAuthType() {
         switch (mPasswordAuthType) {
-            case WEB:
+            case AUTH_TYPE_WEB:
                 this.mWifiConfiguration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
 
                 this.mWifiConfiguration.allowedProtocols.set(WifiConfiguration.Protocol.RSN);
@@ -160,7 +159,7 @@ public class WiFi implements Parcelable {
                 this.mWifiConfiguration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.WEP40);
                 this.mWifiConfiguration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.WEP104);
                 break;
-            case WPA:
+            case AUTH_TYPE_WPA:
                 this.mWifiConfiguration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
 
                 this.mWifiConfiguration.allowedProtocols.set(WifiConfiguration.Protocol.RSN);
@@ -173,7 +172,7 @@ public class WiFi implements Parcelable {
                 this.mWifiConfiguration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.CCMP);
                 this.mWifiConfiguration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.TKIP);
                 break;
-            case OPEN:
+            case AUTH_TYPE_OPEN:
                 this.mWifiConfiguration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
 
                 this.mWifiConfiguration.allowedProtocols.set(WifiConfiguration.Protocol.RSN);

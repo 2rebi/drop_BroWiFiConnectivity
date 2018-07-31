@@ -7,5 +7,5 @@ public interface WiFiConnectListener {
     void onConnected(IWiFiConnectivity IConnectivity, WiFi wifi);
     void onDisconnected(IWiFiConnectivity IConnectivity, WiFi wifi);
     void onConnectionFailed(IWiFiConnectivity IConnectivity , WiFi wifi);
-    //void onDebug(NetworkInfo.DetailedState state);
+    void onDebug(NetworkInfo.DetailedState state);
 }

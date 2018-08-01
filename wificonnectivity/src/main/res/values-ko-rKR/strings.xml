@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wifi_enable_desc" formatted="false">%s의 다음 작업을 허용 하시겠습니까? Wi-Fi 활성화</string>
+    <string name="wifi_enable_allow">허용</string>
+    <string name="wifi_enable_deny">거부</string>
+</resources>

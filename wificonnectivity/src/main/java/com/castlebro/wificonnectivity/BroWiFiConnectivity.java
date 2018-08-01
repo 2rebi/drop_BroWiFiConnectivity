@@ -17,7 +17,7 @@ public class BroWiFiConnectivity {
     private Context mContext;
     private boolean mIsRequestPermission = false;
     private boolean mIsStartScan = false;
-    private short mWifiState = WiFiConnectivity.WIFI_UNSPECIFIED;
+    private short mWifiState = WiFiConnectivity.WIFI_STATE_UNSPECIFIED;
 
     private WiFiScanListener mScanListener;
     private WiFiStateListener mStateListener;
@@ -99,13 +99,13 @@ public class BroWiFiConnectivity {
     }
 
     public BroWiFiConnectivity setWifiEnable(boolean wifiEnable) {
-        if (mWifiState == WiFiConnectivity.WIFI_DEFAULT_DIALOG) return this;
-        mWifiState = wifiEnable ? WiFiConnectivity.WIFI_ENABLE : WiFiConnectivity.WIFI_DISABLE;
+        if (mWifiState == WiFiConnectivity.WIFI_STATE_DEFAULT_DIALOG) return this;
+        mWifiState = wifiEnable ? WiFiConnectivity.WIFI_STATE_ENABLE : WiFiConnectivity.WIFI_STATE_DISABLE;
         return this;
     }
 
     public BroWiFiConnectivity showEnableWifiDialog() {
-        mWifiState = WiFiConnectivity.WIFI_DEFAULT_DIALOG;
+        mWifiState = WiFiConnectivity.WIFI_STATE_DEFAULT_DIALOG;
         return this;
     }
 

@@ -3,6 +3,8 @@ package com.castlebro.wificonnectivity;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -41,8 +43,7 @@ public class BroWiFiConnectivity {
         if (configurationList == null) return -1;
         for(WifiConfiguration cwifi : configurationList)
         {
-            String ssid = cwifi.SSID.replaceAll("\"", "");
-            if (wifi.getSSID().equals(ssid)) return cwifi.networkId;
+            if (isSameConfiguredNetwork(wifi, cwifi)) return cwifi.networkId;
         }
 
         return -1;
@@ -56,23 +57,49 @@ public class BroWiFiConnectivity {
         if (configurationList == null) return false;
         for(WifiConfiguration cwifi : configurationList)
         {
-            String ssid = cwifi.SSID.replaceAll("\"", "");
-            if (wifi.getSSID().equals(ssid)) return true;
+            if (isSameConfiguredNetwork(wifi, cwifi)) return true;
         }
 
         return false;
     }
 
-    public static boolean isConnected(Context context, WiFi wifi)
+    public static boolean isConfiguredNetwork(Context context, String ssid, String bssid)
     {
         WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wm == null) throw new UnsupportedOperationException("Wifi management is not supported");
+        List<WifiConfiguration> configurationList = innerGetConfiguredNetworks(wm);
+        if (configurationList == null) return false;
+        for(WifiConfiguration cwifi : configurationList)
+        {
+            String cssid = cwifi.SSID.replaceAll("\"", "");
+            if (ssid.equals(cssid)) return bssid == null || bssid.equals(cwifi.BSSID);
+        }
+
+        return false;
+    }
+
+    public static boolean isSameConfiguredNetwork(WiFi wifi, WifiConfiguration cwifi)
+    {
+        String cssid = cwifi.SSID.replaceAll("\"", "");
+        return wifi.getSSID().equals(cssid) && (cwifi.BSSID == null || wifi.getBSSID() == null || wifi.getBSSID().equals(cwifi.BSSID));
+    }
+
+    public static boolean isConnected(Context context, WiFi wifi)
+    {
+        WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        ConnectivityManager cm = (ConnectivityManager) context.getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (wm == null) throw new UnsupportedOperationException("WIFI_SERVICE is not supported");
+        if (cm == null) throw new UnsupportedOperationException("CONNECTIVITY_SERVICE is not supported");
 
         WifiInfo info = wm.getConnectionInfo();
-        String ssid = info.getSSID().replaceAll("\"", "");
-        String bssid = info.getBSSID().replaceAll("\"" , "");
+        NetworkInfo networkInfo = cm.getActiveNetworkInfo();
+        if ((info == null) || (networkInfo == null) ||
+                (networkInfo.getType() != ConnectivityManager.TYPE_WIFI)) return false;
 
-        return ssid.equals(wifi.getSSID()) && bssid.equals(wifi.getBSSID());
+        String ssid = info.getSSID() != null ? info.getSSID().replaceAll("\"", "") : "";
+
+        return ssid.equals(wifi.getSSID()) &&
+                ((info.getBSSID() == null) || info.getBSSID().equals(wifi.getBSSID()));
     }
 
     private static List<WifiConfiguration> innerGetConfiguredNetworks(WifiManager wm)

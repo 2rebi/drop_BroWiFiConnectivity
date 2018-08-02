@@ -29,11 +29,19 @@ public class WiFi implements Parcelable {
     private String mPassword;
     private WeakReference<IWiFiConnectivity> mRequester;
 
+    public WiFi(String ssid, int passwordAuthType)
+    {
+        mRequester = new WeakReference<>(null);
+        this.mWifiConfiguration = new WifiConfiguration();
+        this.mWifiConfiguration.SSID = "\"".concat(ssid).concat("\"");
+        this.mWifiConfiguration.status = WifiConfiguration.Status.DISABLED;
+        mPasswordAuthType = passwordAuthType;
+        updatePasswordAuthType();
+    }
+
     public WiFi(IWiFiConnectivity requester, ScanResult scanResult) {
-        super();
         mRequester = new WeakReference<>(requester);
         this.mWifiConfiguration = new WifiConfiguration();
-        this.mWifiConfiguration.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.OPEN);
         this.mWifiConfiguration.SSID = "\"".concat(scanResult.SSID).concat("\"");
         this.mWifiConfiguration.BSSID = scanResult.BSSID;
         this.mWifiConfiguration.status = WifiConfiguration.Status.DISABLED;
@@ -103,6 +111,8 @@ public class WiFi implements Parcelable {
     }
 
     public int getAuthType() { return mPasswordAuthType; }
+
+    public boolean isOnlySSID() { return mWifiConfiguration.BSSID == null; }
 
     public WifiConfiguration getWifiConfiguration()
     {

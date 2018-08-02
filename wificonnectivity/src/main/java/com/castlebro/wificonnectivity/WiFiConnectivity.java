@@ -2,7 +2,9 @@ package com.castlebro.wificonnectivity;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
+import android.app.Application;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -15,14 +17,18 @@ import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityManagerCompat;
 import android.text.Html;
+import android.widget.TextView;
 
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static android.net.wifi.WifiManager.EXTRA_NEW_STATE;
@@ -31,14 +37,14 @@ import static android.net.wifi.WifiManager.EXTRA_NEW_STATE;
  * ToDo
  * Wifi auto re scan
  */
-public class WiFiConnectivity extends Service implements IWiFiConnectivity {
+public class WiFiConnectivity extends Service implements IWiFiConnectivity, Application.ActivityLifecycleCallbacks {
     static Map<String, WeakReference<Context>> ContextServeObject = new HashMap<>();
     static Map<String, WiFiScanListener> ScanListenerServeObject = new HashMap<>();
     static Map<String, WiFiStateListener> StateListenerServeObject = new HashMap<>();
     static Map<String, WiFiConnectListener> ConnectListenerServeObject = new HashMap<>();
 
     public static final String FAILED_REASON_REQUEST_TIMEOUT = "failed_reason_request_timeout";
-    public static final String FAILED_REASON_WRONG_PASSWORD = "failed_reason_wrong_password";
+    public static final String FAILED_REASON_WRONG_PASSWORD = "failed_reason_lost_or_wrong_password"; //wrong_password";
 
     public static final int REQUEST_PERMISSION_CODE = 102939;
 
@@ -98,6 +104,8 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
+        getApplication().registerActivityLifecycleCallbacks(this);
+
         initalizeConnection();
 
         mRequesterHashCode = intent.getStringExtra(REQUESTER_CONTEXT);
@@ -126,18 +134,19 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
         intentFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
         intentFilter.addAction(WifiManager.SUPPLICANT_STATE_CHANGED_ACTION);
 
+        //Todo
+        //Maybe Deprecated on API 28 Level
+        intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
+
         registerReceiver(mReceiver, intentFilter);
 
         setEnableWifi(mWifiState);
         if (mWifiState != WIFI_STATE_DEFAULT_DIALOG)
             requestPermission();
 
-
-        if (wifi != null) {
+        startScan();
+        if (wifi != null)
             connect(wifi);
-        } else {
-            startScan();
-        }
 
         return Service.START_NOT_STICKY;
     }
@@ -145,6 +154,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
     @Override
     public void onDestroy() {
         unregisterReceiver(mReceiver);
+        getApplication().unregisterActivityLifecycleCallbacks(this);
         super.onDestroy();
     }
 
@@ -166,7 +176,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
         String infoSSID = (info.getSSID() != null) ? (info.getSSID().replaceAll("\"", "")) : ("");
         String infoBSSID = (info.getBSSID() != null) ? (info.getBSSID().replaceAll("\"", "")) : ("");
         if (infoSSID.equals(wifi.getSSID()) && infoBSSID.equals(wifi.getBSSID())) {
-            short state = convertWifiConnection(null, info.getSupplicantState());
+            short state = convertWifiConnection(mConnectivityManager.getActiveNetworkInfo(), null);
             if (state == WIFI_CONNECTED)
             {
                 mConnectWifi = wifi;
@@ -177,7 +187,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
         }
 
         if (mWifiManager.isWifiEnabled()) {
-            int netId = BroWiFiConnectivity.getConfiguredNetworkId(this, wifi);
+            int netId = BroWiFiConnectivity.getConfiguredNetworkId(mRequester.get(), wifi);
             if (netId == -1) netId = mWifiManager.addNetwork(wifi.getWifiConfiguration());
             if ((netId != -1) &&
                     mWifiManager.enableNetwork(netId, true) &&
@@ -234,21 +244,6 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
                         show());
     }
 
-//    private boolean isApiLevelOver23()
-//    {
-//        return (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M);
-//    }
-//
-//    private boolean isAllowPermission()
-//    {
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-//        {
-//            return (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED);
-//        }
-//
-//        return true;
-//    }
-
     private void requestPermission() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -288,7 +283,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
     }
 
     private short convertWifiConnection(NetworkInfo nInfo, SupplicantState sState) {
-        if (nInfo != null) {
+        if ((nInfo != null) && (nInfo.getType() == ConnectivityManager.TYPE_WIFI)) {
             NetworkInfo.State nState = nInfo.getState();
             if (NetworkInfo.State.DISCONNECTED == nState) return WIFI_DISCONNECTED;
             if (NetworkInfo.State.CONNECTING == nState) return WIFI_CONNECTING;
@@ -325,15 +320,24 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
                             startScan();
                     }
                     break;
+                case ConnectivityManager.CONNECTIVITY_ACTION:
+                    if (mWifiConnection != WIFI_CONNECTED) break;
+                    if ((mConnectivityManager.getActiveNetworkInfo() != null) &&
+                            (mConnectivityManager.getActiveNetworkInfo().getType() == ConnectivityManager.TYPE_WIFI))
+                    {
+                        mConnectionCallback.connected();
+                    }
+                    break;
                 case WifiManager.SUPPLICANT_STATE_CHANGED_ACTION:
+                    SupplicantState sState = intent.getParcelableExtra(WifiManager.EXTRA_NEW_STATE);
+                    break;
                 case WifiManager.NETWORK_STATE_CHANGED_ACTION:
                     if (mWifiConnection == WIFI_UNKNOWN) break;
+
                     WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
-                    SupplicantState sState = intent.getParcelableExtra(WifiManager.EXTRA_NEW_STATE);
                     NetworkInfo nInfo = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
 
-                    if (wifiInfo.getSupplicantState() == SupplicantState.COMPLETED) sState = null;
-                    short state = convertWifiConnection(nInfo, sState);
+                    short state = convertWifiConnection(nInfo, null);
                     if (mWifiConnection != WIFI_CONNECTED)
                     {
                         String bssid = wifiInfo.getBSSID() != null ? wifiInfo.getBSSID().replaceAll("\"", "") : "";
@@ -361,15 +365,13 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
                         case WIFI_CONNECTING:
                             if (state == WIFI_CONNECTED) {
                                 mWifiConnection = WIFI_CONNECTED;
-                                mConnectionCallback.connected();
+                                //mConnectionCallback.connected();
                             } else if (state == WIFI_DISCONNECTED) {
                                 mConnectionCallback.wrongPassword();
                             }
                             break;
                         case WIFI_CONNECTED:
-                            if (state == WIFI_CONNECTED) {
-                                mConnectionCallback.connected();
-                            } else if (state == WIFI_DISCONNECTED) {
+                            if (state == WIFI_DISCONNECTED) {
                                 mWifiConnection = WIFI_DISCONNECTED;
                                 mConnectionCallback.disconnected();
                             }
@@ -454,5 +456,40 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity {
 //            removeMessages(TIMEOUT);
 //            removeMessages(WRONG_PASSWORD);
 //        }
+    }
+
+    @Override
+    public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+
+    }
+
+    @Override
+    public void onActivityStarted(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivityResumed(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivityPaused(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivityStopped(Activity activity) {
+
+    }
+
+    @Override
+    public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
+
+    }
+
+    @Override
+    public void onActivityDestroyed(Activity activity) {
+        if ((mRequester.get() == null) || (mRequester.get().hashCode() == activity.hashCode())) stopSelf();
     }
 }

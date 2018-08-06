@@ -129,6 +129,17 @@ public class WiFi implements Parcelable {
         return false;
     }
 
+    @Override
+    public String toString() {
+        String str = "";
+        str += "this =" + this.hashCode();
+        str += "/ SSID = " + getSSID();
+        str += "/ BSSID = " + getBSSID();
+        str += "/ Password Type (OPEN=0, WEB=1, WPA/WPA2=2) : " + this.mPasswordAuthType;
+
+        return str;
+    }
+
     private void parseCapabilities(String capabilities) {
         //capabilities.contains()
 

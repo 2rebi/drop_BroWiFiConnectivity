@@ -1,7 +1,7 @@
 package com.castlebro.wificonnectivity;
 
 public interface WiFiStateListener {
-    void onStateChange(int state);
+    void onStateChange(IWiFiConnectivity IConnectivity, int state);
 
     /*
      * ToDo

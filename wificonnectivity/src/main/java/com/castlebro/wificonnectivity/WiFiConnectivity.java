@@ -81,6 +81,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
     private WifiManager mWifiManager;
     private ConnectivityManager mConnectivityManager;
 
+    private int mWifiCurrentState = -1;
     private short mWifiConnection = WIFI_UNKNOWN;
     private WiFi mConnectWifi = null;
 
@@ -390,11 +391,15 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
             Log.d(TAG, "BroadcastReceive Action / " + action);
             switch (action) {
                 case WifiManager.WIFI_STATE_CHANGED_ACTION:
+                    int wifistate = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, -1);
+                    if (wifistate == -1) break;
+                    mWifiCurrentState = wifistate;
                     Log.d(TAG, "WIFI_STATE_DISABLING / 0, WIFI_STATE_DISABLED / 1, WIFI_STATE_ENABLING / 2, WIFI_STATE_ENABLED / 3, WIFI_STATE_UNKNOWN / 4");
-                    Log.d(TAG, String.valueOf(mWifiManager.getWifiState()));
-                    if (mStateListener != null)
+                    Log.d(TAG, String.valueOf(wifistate));
+                    if (mStateListener != null) {
                         Log.d(TAG, "onStateChange callback");
-                        mStateListener.onStateChange(mWifiManager.getWifiState());
+                        mStateListener.onStateChange(WiFiConnectivity.this, wifistate);
+                    }
                     break;
                 case WifiManager.SCAN_RESULTS_AVAILABLE_ACTION:
                     List<ScanResult> results = mWifiManager.getScanResults();
@@ -409,7 +414,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                 case ConnectivityManager.CONNECTIVITY_ACTION:
                     if (mWifiConnection != WIFI_CONNECTED) break;
                     Log.d(TAG, "Connected Success");
-                    if ((mConnectivityManager.getActiveNetworkInfo() != null) &&
+                    if ((mConnectivityManager.getActiveNetworkInfo() != null) && (mWifiCurrentState == WifiManager.WIFI_STATE_ENABLED) &&
                             (mConnectivityManager.getActiveNetworkInfo().getType() == ConnectivityManager.TYPE_WIFI))
                     {
                         Log.d(TAG, "Active NetworkInfo type is TYPE_WIFI");
@@ -498,6 +503,8 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
             }
 
 
+            if (true)
+                return;
             Log.d(TAG, "WifiManager Detail Information");
             Log.d(TAG, "Wifi State / " + mWifiManager.getWifiState());
             Log.d(TAG, "Wifi ConnectionInfo / " + (mWifiManager.getConnectionInfo() == null ? "null" : mWifiManager.getConnectionInfo().toString()));

@@ -8,6 +8,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.support.annotation.NonNull;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class WiFi implements Parcelable {
 
@@ -67,6 +69,12 @@ public class WiFi implements Parcelable {
         dest.writeString(mPassword);
     }
 
+    public static boolean isMacAddress(String macAddress)
+    {
+        if (macAddress == null) return false;
+        return Pattern.matches("([0-9a-fA-F][0-9a-fA-F]:){5}([0-9a-fA-F][0-9a-fA-F])$", macAddress);
+    }
+
     public static final Creator<WiFi> CREATOR = new Creator<WiFi>() {
         @Override
         public WiFi createFromParcel(Parcel in) {
@@ -107,7 +115,7 @@ public class WiFi implements Parcelable {
 
     public String getBSSID()
     {
-        return mWifiConfiguration.BSSID;
+        return  isMacAddress(mWifiConfiguration.BSSID) ? mWifiConfiguration.BSSID.replaceAll("\"", "") : "00:00:00:00:00:00";
     }
 
     public int getAuthType() { return mPasswordAuthType; }

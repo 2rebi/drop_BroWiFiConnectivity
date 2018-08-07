@@ -13,6 +13,7 @@ import android.util.Log;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class BroWiFiConnectivity {
 
@@ -81,7 +82,9 @@ public class BroWiFiConnectivity {
     public static boolean isSameConfiguredNetwork(WiFi wifi, WifiConfiguration cwifi)
     {
         String cssid = cwifi.SSID.replaceAll("\"", "");
-        return wifi.getSSID().equals(cssid) && (cwifi.BSSID == null || wifi.getBSSID() == null || wifi.getBSSID().equals(cwifi.BSSID));
+        String cbssid = WiFi.isMacAddress(cwifi.BSSID) ? cwifi.BSSID.replaceAll("\"", "") : null;
+        return wifi.getSSID().equals(cssid) && (cbssid == null || wifi.getBSSID().equals(cbssid));
+                //&& (cbssid == null || wifi.getBSSID() == null || wifi.getBSSID().equals(cbssid));
     }
 
     public static boolean isConnected(Context context, WiFi wifi)

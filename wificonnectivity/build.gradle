@@ -3,17 +3,41 @@ apply plugin: 'com.android.library'
 def sdkCompileTargetVersion = 27
 def supportLibraryVersion = '27.1.1'
 
-android {
-    compileSdkVersion sdkCompileTargetVersion
+apply plugin: 'com.jfrog.bintray'
+buildscript {
 
+    repositories {
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.novoda:bintray-release:0.8.1'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+publish {
+    userOrg = 'castlebro'
+    groupId = 'com.castlebro.wificonnectivity'
+    artifactId = 'wificonnectivity'
+    publishVersion = '0.0.1'
+    desc = 'https://github.com/CastleBro/BroWiFiConnectivity'
+    website = 'https://github.com/CastleBro/BroWiFiConnectivity'
+    issueTracker = "https://github.com/CastleBro/BroWiFiConnectivity/issues"
+    repository = "https://github.com/CastleBro/BroWiFiConnectivity.git"
+}
+
+android {
+    compileSdkVersion 27
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion sdkCompileTargetVersion
+        targetSdkVersion 27
         versionCode 1
         versionName "1.0"
         vectorDrawables.useSupportLibrary = true
     }
-
     buildTypes {
         release {
             minifyEnabled true
@@ -23,6 +47,8 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+    productFlavors {
     }
 }
 

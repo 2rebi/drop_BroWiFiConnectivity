@@ -26,6 +26,7 @@ public class WiFi implements Parcelable {
     public static final int AUTH_TYPE_WEB = 1;
     public static final int AUTH_TYPE_WPA = 2;
 
+    private ScanResult mScanOriginal;
     private WifiConfiguration mWifiConfiguration;
     private int mPasswordAuthType = UNSPECIFIED;
     private String mPassword;
@@ -48,6 +49,8 @@ public class WiFi implements Parcelable {
         this.mWifiConfiguration.BSSID = scanResult.BSSID;
         this.mWifiConfiguration.status = WifiConfiguration.Status.DISABLED;
         parseCapabilities(scanResult.capabilities);
+
+        mScanOriginal = scanResult;
     }
 
     protected WiFi(Parcel in) {
@@ -115,10 +118,14 @@ public class WiFi implements Parcelable {
 
     public String getBSSID()
     {
-        return  isMacAddress(mWifiConfiguration.BSSID) ? mWifiConfiguration.BSSID.replaceAll("\"", "") : "00:00:00:00:00:00";
+        return mWifiConfiguration.BSSID;//isMacAddress(mWifiConfiguration.BSSID) ? mWifiConfiguration.BSSID.replaceAll("\"", "") : "00:00:00:00:00:00";
     }
 
     public int getAuthType() { return mPasswordAuthType; }
+
+    public int getRSSI() { return mScanOriginal != null ? mScanOriginal.level : 123456; }
+
+    public boolean isScanResultType() { return mScanOriginal == null; }
 
     public boolean isOnlySSID() { return mWifiConfiguration.BSSID == null; }
 
@@ -131,8 +138,7 @@ public class WiFi implements Parcelable {
     public boolean equals(Object obj) {
         if (obj instanceof WiFi) {
             WiFi Obj = (WiFi) obj;
-            return mWifiConfiguration.SSID.equals(Obj.mWifiConfiguration.SSID) &&
-                    mWifiConfiguration.BSSID.equals(Obj.mWifiConfiguration.BSSID);
+            return BroWiFiConnectivity.isSameWiFi(this, Obj);
         }
         return false;
     }

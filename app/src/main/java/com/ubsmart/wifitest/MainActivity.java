@@ -20,6 +20,7 @@ import com.castlebro.wificonnectivity.BroWiFiConnectivity;
 import com.castlebro.wificonnectivity.IWiFiConnectivity;
 import com.castlebro.wificonnectivity.WiFi;
 import com.castlebro.wificonnectivity.WiFiConnectListener;
+import com.castlebro.wificonnectivity.WiFiDebugListener;
 
 import java.util.HashSet;
 import java.util.List;
@@ -54,42 +55,44 @@ public class MainActivity extends AppCompatActivity {
                 .setRequestPermission(true)
                 .setScanListener((wifis) ->
                 {
+                    StringBuilder sb = new StringBuilder();
 //                    buf = "";
 //                    results = wifis;
                     for (WiFi data : wifis) {
-                        if (data.getSSID().contains("smart-ca5"))
-                        {
-                            data.setPassword("22026180");
-                            boolean test = data.connect();
-                            if (test)
-                            {
-                                Name.setText(Name.getText() + "Request true \n");
-                                return true;
-                            }
-                            else
-                            {
-                                Name.setText(Name.getText() + "Request false \n");
-                            }
-                        }
+                        sb.append("SSID / " + data.getSSID());
+                        sb.append("RSSI / " + data.getRSSI());
+                        sb.append("\n");
                     }
+                    Name.setText(sb.toString());
 //                    Name.setText(buf);
                     return false;
+                })
+                .setDebugListener(new WiFiDebugListener() {
+                    @Override
+                    public void onDebug(Intent intent) {
+
+                    }
+
+                    @Override
+                    public void onException(Exception e) {
+
+                    }
                 })
                 .setScan(true)
                 .setConnectListener(new WiFiConnectListener() {
                     @Override
                     public void onConnected(IWiFiConnectivity IConnectivity, WiFi wifi) {
-                        Name.setText(Name.getText() + "onConnected callback\n");
+                        //Name.setText(Name.getText() + "onConnected callback\n");
                     }
 
                     @Override
                     public void onDisconnected(IWiFiConnectivity IConnectivity, WiFi wifi) {
-                        Name.setText(Name.getText() + "onDisconnected callback\n");
+                        //Name.setText(Name.getText() + "onDisconnected callback\n");
                     }
 
                     @Override
                     public void onConnectionFailed(IWiFiConnectivity IConnectivity, WiFi wifi, String reason) {
-                        Name.setText(Name.getText() + "onFailed callback\n" + reason);
+                        //Name.setText(Name.getText() + "onFailed callback\n" + reason);
                     }
                 })
                 .start();

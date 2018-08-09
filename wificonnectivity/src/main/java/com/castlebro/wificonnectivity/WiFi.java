@@ -105,10 +105,9 @@ public class WiFi implements Parcelable {
 
     public boolean connect() {
         if (mRequester.get() != null)
-            mRequester.get().connect(this);
-        else
-            return false;
-        return true;
+            return mRequester.get().connect(this);
+
+        return false;
     }
 
     public String getSSID()

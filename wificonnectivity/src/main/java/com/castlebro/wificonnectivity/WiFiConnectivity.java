@@ -276,7 +276,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
 
                 Log.d(TAG, "Connection state change to WIFI_REQUEST_CONNECT");
                 mConnectWifi = wifi;
-                mWifiConnection = CONNECTED;
+                mWifiConnection = REQUEST_CONNECT;
 
                 Log.d(TAG, "return true");
                 return true;
@@ -465,10 +465,6 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                                 if (state == CONNECTING) {
                                     Log.d(TAG, "NewState / CONNECTING");
                                     mWifiConnection = CONNECTING;
-                                } else if (state == DISCONNECTED) {
-                                    Log.d(TAG, "NewState / DISCONNECTED");
-                                    Log.d(TAG, "ConnectFailed callback");
-                                    mConnectionCallback.wrongPassword();
                                 } else {
                                     Log.d(TAG, "NewState / REQUEST_CONNECT");
                                 }
@@ -556,25 +552,31 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
             WiFiConnectivity requester = mRequester.get();
             if (requester == null) return;
             Log.d(TAG, "handleMessage");
+            WiFi wifi = requester.mConnectWifi;
+            if (wifi == null)
+            {
+                Log.d(TAG, "invalid requester.mConnectWifi / null");
+                return;
+            }
             switch (msg.what) {
                 case DISCONNECTED:
                     Log.d(TAG, "DISCONNECTED callback");
-                    requester.mConnectListener.onDisconnected(requester, requester.mConnectWifi);
                     requester.initializeConnection();
+                    requester.mConnectListener.onDisconnected(requester, wifi);
                     break;
                 case CONNECTED:
                     Log.d(TAG, "CONNECTED callback");
-                    requester.mConnectListener.onConnected(requester, requester.mConnectWifi);
+                    requester.mConnectListener.onConnected(requester, wifi);
                     break;
                 case TIMEOUT:
                     Log.d(TAG, "TIMEOUT callback wifi info / " + (requester.mConnectWifi != null ? requester.mConnectWifi.toString() : "null"));
-                    requester.mConnectListener.onConnectionFailed(requester, requester.mConnectWifi, FAILED_REASON_REQUEST_TIMEOUT);
                     requester.initializeConnection();
+                    requester.mConnectListener.onConnectionFailed(requester, wifi, FAILED_REASON_REQUEST_TIMEOUT);
                     break;
                 case WRONG_PASSWORD:
                     Log.d(TAG, "WRONG_PASSWORD callback wifi info / " + (requester.mConnectWifi != null ? requester.mConnectWifi.toString() : "null"));
-                    requester.mConnectListener.onConnectionFailed(requester, requester.mConnectWifi, FAILED_REASON_WRONG_PASSWORD);
                     requester.initializeConnection();
+                    requester.mConnectListener.onConnectionFailed(requester, wifi, FAILED_REASON_WRONG_PASSWORD);
                     break;
             }
             Log.d(TAG, "handleMessage end");

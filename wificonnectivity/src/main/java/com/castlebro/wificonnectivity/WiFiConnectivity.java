@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.castlebro.wificonnectivity.WiFiConnectionState.CONNECTED;
+import static com.castlebro.wificonnectivity.WiFiConnectionState.CONNECTED_DONE;
 import static com.castlebro.wificonnectivity.WiFiConnectionState.CONNECTING;
 import static com.castlebro.wificonnectivity.WiFiConnectionState.DISCONNECTED;
 import static com.castlebro.wificonnectivity.WiFiConnectionState.REQUEST_CONNECT;
@@ -480,6 +481,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                                     mConnectionCallback.wrongPassword();
                                 }
                                 break;
+                            case CONNECTED_DONE:
                             case CONNECTED:
                                 Log.d(TAG, "OldState / CONNECTED");
                                 if (state == DISCONNECTED) {
@@ -566,6 +568,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                     break;
                 case CONNECTED:
                     Log.d(TAG, "CONNECTED callback");
+                    requester.mWifiConnection = CONNECTED_DONE;
                     requester.mConnectListener.onConnected(requester, wifi);
                     break;
                 case TIMEOUT:

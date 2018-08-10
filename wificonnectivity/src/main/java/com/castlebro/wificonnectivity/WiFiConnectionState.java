@@ -9,7 +9,8 @@ public enum WiFiConnectionState implements Parcelable {
     DISCONNECTED(1),
     REQUEST_CONNECT(DISCONNECTED.getLevel() << 1),
     CONNECTING(REQUEST_CONNECT.getLevel() << 1),
-    CONNECTED(CONNECTING.getLevel() << 1);
+    CONNECTED(CONNECTING.getLevel() << 1),
+    CONNECTED_DONE(CONNECTED.getLevel() << 1);
 
     private int mLevel;
 

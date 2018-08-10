@@ -71,6 +71,8 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
     private boolean mIsPermissionRequest = false;
     private boolean mIsStartScan = false;
 
+    private boolean mIsRequesterForeground = false;
+
     private WeakReference<Context> mRequester;
     private WiFiScanListener mScanListener;
     private WiFiStateListener mStateListener;
@@ -119,6 +121,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
+        mIsRequesterForeground = true;
         Log.d(TAG, "onStartCommand");
 
         Log.d(TAG, "Application call method \"registerActivityLifecycleCallbacks\"");
@@ -384,6 +387,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
 
                 return;
             }
+            if (!mIsRequesterForeground) return;
             String action = intent.getAction();
             if (action == null) return;
 
@@ -624,27 +628,27 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
 
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-
+        if (IsRequester(activity)) mIsRequesterForeground = true;
     }
 
     @Override
     public void onActivityStarted(Activity activity) {
-
+        if (IsRequester(activity)) mIsRequesterForeground = true;
     }
 
     @Override
     public void onActivityResumed(Activity activity) {
-
+        if (IsRequester(activity)) mIsRequesterForeground = true;
     }
 
     @Override
     public void onActivityPaused(Activity activity) {
-
+        if (IsRequester(activity)) mIsRequesterForeground = false;
     }
 
     @Override
     public void onActivityStopped(Activity activity) {
-
+        if (IsRequester(activity)) mIsRequesterForeground = false;
     }
 
     @Override
@@ -654,6 +658,11 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
 
     @Override
     public void onActivityDestroyed(Activity activity) {
-        if ((mRequester.get() == null) || (mRequester.get().hashCode() == activity.hashCode())) stopSelf();
+        if (IsRequester(activity)) stopSelf();
+    }
+
+    private boolean IsRequester(Context context)
+    {
+        return (mRequester.get() == null) || (mRequester.get().hashCode() == context.hashCode());
     }
 }

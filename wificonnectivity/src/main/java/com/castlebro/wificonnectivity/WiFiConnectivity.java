@@ -20,7 +20,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
 import android.os.Message;
 import android.support.annotation.Nullable;
 import android.text.Html;
@@ -51,6 +50,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
     static Map<String, WiFiDebugListener> DebugListenerServeObject = new HashMap<>();
 
     public static final String FAILED_REASON_REQUEST_TIMEOUT = "failed_reason_request_timeout";
+    public static final String FAILED_REASON_NOT_ENABLED = "failed_reason_not_enabled";
     public static final String FAILED_REASON_WRONG_PASSWORD = "failed_reason_lost_or_wrong_password"; //wrong_password";
 
     public static final int REQUEST_PERMISSION_CODE = 102939;
@@ -83,6 +83,9 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
     private ConnectivityManager mConnectivityManager;
 
     private int mWifiCurrentState = -1;
+    private SupplicantState mSupplicantState = SupplicantState.DISCONNECTED;
+    private NetworkInfo mWifiNetInfo = null;
+
     private WiFiConnectionState mWifiConnection = UNKNOWN;
     private WiFi mConnectWifi = null;
 
@@ -216,21 +219,17 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
             return false;
         }
 
-        if (wifi == null)
-        {
+        if (wifi == null) {
             Log.d(TAG, "connect wifi / null");
             return false;
         }
 
         Log.d(TAG, "connect wifi / " + wifi.toString());
-        if ((mWifiConnection.getLevel() >= REQUEST_CONNECT.getLevel()) && BroWiFiConnectivity.isSameWiFi(mConnectWifi, wifi))
-        {
+        if ((mWifiConnection.getLevel() >= REQUEST_CONNECT.getLevel()) && BroWiFiConnectivity.isSameWiFi(mConnectWifi, wifi)) {
             Log.d(TAG, "Already request connect wifi / " + mConnectWifi.toString());
             Log.d(TAG, "return true");
             return true;
-        }
-        else
-        {
+        } else {
             initializeConnection();
             Log.d(TAG, "New request connect wifi / " + wifi.toString());
         }
@@ -245,8 +244,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
         if (BroWiFiConnectivity.isSameWiFi(wifi, info)) {
             Log.d(TAG, "Same wifi information");
             WiFiConnectionState state = Helper.convertWifiConnection(mConnectivityManager.getActiveNetworkInfo(), null);
-            if (state == CONNECTED)
-            {
+            if (state == CONNECTED) {
                 Log.d(TAG, "Connection state change to WIFI_CONNECTED");
                 mConnectWifi = wifi;
                 mWifiConnection = CONNECTED;
@@ -265,8 +263,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
 
             Log.d(TAG, "Check wifi configuredNetwork");
             int netId = BroWiFiConnectivity.getConfiguredNetworkId(mWifiManager, wifi);
-            if (netId == -1)
-            {
+            if (netId == -1) {
                 Log.d(TAG, "Wifi not configuredNetwork");
                 Log.d(TAG, "addNetwork WifiConfiguration / " + wifi.getWifiConfiguration().toString());
                 netId = mWifiManager.addNetwork(wifi.getWifiConfiguration());
@@ -353,8 +350,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
          * TODO
          * startScan Deprecated On API 28 Level
          */
-        if (mIsStartScan)
-        {
+        if (mIsStartScan) {
             Log.d(TAG, "start Scan");
             mWifiManager.startScan();
         }
@@ -378,13 +374,45 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
         return isSupported() && hasRequester();
     }
 
+    private void wifiProcessing() {
+
+        if (mWifiConnection.getLevel() >= WiFiConnectionState.REQUEST_CONNECT.getLevel()) {
+            if (!mWifiManager.isWifiEnabled()) {
+                if (mWifiConnection.getLevel() >= CONNECTED.getLevel())
+                    mConnectionCallback.disconnected();
+                else
+                    mConnectionCallback.notEnabledWifiFailed();
+                return;
+            }
+            WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
+            if (BroWiFiConnectivity.isSameWiFi(mConnectWifi, wifiInfo) &&
+                    BroWiFiConnectivity.isSameWiFi(mConnectWifi, mWifiNetInfo)) {
+                mConnectionCallback.removeTimeout();
+                switch(mWifiNetInfo.getState()) {
+                    case DISCONNECTED:
+                        if (mWifiConnection == CONNECTING) {
+                            mConnectionCallback.wrongPassword();
+                        }
+                        break;
+                    case CONNECTING:
+                        mWifiConnection = CONNECTING;
+                        break;
+                    case CONNECTED:
+                        mWifiConnection = CONNECTED;
+                        break;
+                }
+            } else {
+                mConnectionCallback.setTimeout();
+            }
+        }
+    }
+
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (!isValid()) {
                 Log.d(TAG, "WiFiConnectivity is invalid, I'm stop myself goodbye");
                 stopSelf();
-
                 return;
             }
             if (!mIsRequesterForeground) return;
@@ -392,117 +420,51 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
             if (action == null) return;
 
             Log.d(TAG, "BroadcastReceive Action / " + action);
-            try {
-                if (mDebugListener != null) mDebugListener.onDebug(intent);
-                switch (action) {
-                    case WifiManager.WIFI_STATE_CHANGED_ACTION:
-                        int wifistate = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, -1);
-                        if (wifistate == -1) break;
-                        mWifiCurrentState = wifistate;
-                        Log.d(TAG, "WIFI_STATE_DISABLING / 0, WIFI_STATE_DISABLED / 1, WIFI_STATE_ENABLING / 2, WIFI_STATE_ENABLED / 3, WIFI_STATE_UNKNOWN / 4");
-                        Log.d(TAG, String.valueOf(wifistate));
-                        if (mStateListener != null) {
-                            Log.d(TAG, "onStateChange callback");
-                            mStateListener.onStateChange(WiFiConnectivity.this, wifistate);
-                        }
-                        break;
-                    case WifiManager.SCAN_RESULTS_AVAILABLE_ACTION:
-                        List<ScanResult> results = mWifiManager.getScanResults();
-                        Log.d(TAG, "getScanResults Size / " + String.valueOf(results.size()));
-                        if (mScanListener != null) {
-                            Log.d(TAG, "ScanResults callback");
-                            if (!mScanListener.ScanResults(
-                                    WiFi.parseCollection(WiFiConnectivity.this, results)))
-                                startScan();
-                        }
-                        break;
-                    case ConnectivityManager.CONNECTIVITY_ACTION:
-                        if (mWifiConnection != CONNECTED) break;
-                        Log.d(TAG, "Connected Success");
-                        if ((mConnectivityManager.getActiveNetworkInfo() != null) && (mWifiCurrentState == WifiManager.WIFI_STATE_ENABLED) &&
-                                (mConnectivityManager.getActiveNetworkInfo().getType() == ConnectivityManager.TYPE_WIFI)) {
-                            Log.d(TAG, "Active NetworkInfo type is TYPE_WIFI");
-                            Log.d(TAG, "connected callback");
-                            mConnectionCallback.connected();
-                        } else {
-                            Log.d(TAG, "Active NetworkInfo is null or not TYPE_WIFI");
-                        }
-                        break;
-                    case WifiManager.SUPPLICANT_STATE_CHANGED_ACTION:
-                        SupplicantState sState = intent.getParcelableExtra(WifiManager.EXTRA_NEW_STATE);
-                        Log.d(TAG, "SupplicantState / " + sState.toString());
-                        break;
-                    case WifiManager.NETWORK_STATE_CHANGED_ACTION:
-                        WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
-                        NetworkInfo nInfo = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
-
-                        WiFiConnectionState state = Helper.convertWifiConnection(nInfo, null);
-
-                        Log.d(TAG, "WifiInfo = " + (wifiInfo != null ? wifiInfo.toString() : "null"));
-                        Log.d(TAG, "NetworkInfo = " + (nInfo != null ? nInfo.toString() : "null"));
-                        if (mWifiConnection == UNKNOWN) {
-                            Log.d(TAG, "mWifiConnection / WIFI_UNKNOWN");
-                            Log.d(TAG, "Not Request connect");
-                            break;
-                        }
-                        if ((mWifiConnection != CONNECTED) && (wifiInfo != null)) {
-                            String bssid = wifiInfo.getBSSID() != null ? wifiInfo.getBSSID().replaceAll("\"", "") : "";
-                            if (!mConnectWifi.getBSSID().equals(bssid)) {
-                                Log.d(TAG, "setTimeout 5000ms");
-                                mConnectionCallback.setTimeout();
-                                break;
-                            } else {
-                                Log.d(TAG, "removeTimeout");
-                                mConnectionCallback.removeTimeout();
-                            }
-                        }
-
-                        switch (mWifiConnection) {
-                            case DISCONNECTED:
-                                if (state == DISCONNECTED) {
-                                    Log.d(TAG, "mWifiConnection / DISCONNECTED");
-                                    Log.d(TAG, "Disconnected callback");
-                                    mConnectionCallback.disconnected();
-                                }
-                                break;
-                            case REQUEST_CONNECT:
-                                Log.d(TAG, "OldState / REQUEST_CONNECT");
-                                if (state == CONNECTING) {
-                                    Log.d(TAG, "NewState / CONNECTING");
-                                    mWifiConnection = CONNECTING;
-                                } else {
-                                    Log.d(TAG, "NewState / REQUEST_CONNECT");
-                                }
-                                break;
-                            case CONNECTING:
-                                Log.d(TAG, "OldState / CONNECTING");
-                                if (state == CONNECTED) {
-                                    Log.d(TAG, "NewState / CONNECTED");
-                                    mWifiConnection = CONNECTED;
-                                } else if (state == DISCONNECTED) {
-                                    Log.d(TAG, "NewState / DISCONNECTED");
-                                    Log.d(TAG, "ConnectFailed callback");
-                                    mConnectionCallback.wrongPassword();
-                                }
-                                break;
-                            case CONNECTED_DONE:
-                            case CONNECTED:
-                                Log.d(TAG, "OldState / CONNECTED");
-                                if (state == DISCONNECTED) {
-                                    Log.d(TAG, "NewState / DISCONNECTED");
-                                    mWifiConnection = DISCONNECTED;
-                                    Log.d(TAG, "Disconnected callback");
-                                    mConnectionCallback.disconnected();
-                                }
-                                break;
-                        }
-                        break;
-                }
-            }
-            catch (Exception e)
-            {
-                if (mDebugListener != null)
-                    mDebugListener.onException(e);
+            if (mDebugListener != null) mDebugListener.onDebug(intent);
+            switch (action) {
+                case WifiManager.WIFI_STATE_CHANGED_ACTION:
+                    int wifistate = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, -1);
+                    if (wifistate == -1) break;
+                    mWifiCurrentState = wifistate;
+                    Log.d(TAG, "WIFI_STATE_DISABLING / 0, WIFI_STATE_DISABLED / 1, WIFI_STATE_ENABLING / 2, WIFI_STATE_ENABLED / 3, WIFI_STATE_UNKNOWN / 4");
+                    Log.d(TAG, String.valueOf(wifistate));
+                    if (mStateListener != null) {
+                        Log.d(TAG, "onStateChange callback");
+                        mStateListener.onStateChange(WiFiConnectivity.this, wifistate);
+                    }
+                    wifiProcessing();
+                    break;
+                case WifiManager.SCAN_RESULTS_AVAILABLE_ACTION:
+                    List<ScanResult> results = mWifiManager.getScanResults();
+                    Log.d(TAG, "getScanResults Size / " + String.valueOf(results.size()));
+                    if (mScanListener != null) {
+                        Log.d(TAG, "ScanResults callback");
+                        if (!mScanListener.ScanResults(
+                                WiFi.parseCollection(WiFiConnectivity.this, results)))
+                            startScan();
+                    }
+                    break;
+                case ConnectivityManager.CONNECTIVITY_ACTION:
+                    if (mWifiConnection != CONNECTED) break;
+                    Log.d(TAG, "Connected Success");
+                    if (BroWiFiConnectivity.isSameWiFi(mConnectWifi, mConnectivityManager.getActiveNetworkInfo())) {
+                        Log.d(TAG, "Active NetworkInfo type is TYPE_WIFI");
+                        Log.d(TAG, "connected callback");
+                        mConnectionCallback.connected();
+                    } else {
+                        Log.d(TAG, "Active NetworkInfo is null or not TYPE_WIFI");
+                    }
+                    break;
+                case WifiManager.SUPPLICANT_STATE_CHANGED_ACTION:
+                    mSupplicantState = intent.getParcelableExtra(WifiManager.EXTRA_NEW_STATE);
+                    Log.d(TAG, "SupplicantState / " + mSupplicantState.toString());
+                    //wifiProcessing();
+                    break;
+                case WifiManager.NETWORK_STATE_CHANGED_ACTION:
+                    mWifiNetInfo = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
+                    Log.d(TAG, "WiFi NetworkInfo / " + mWifiNetInfo.toString());
+                    wifiProcessing();
+                    break;
             }
 //            if (true)
 //                return;
@@ -546,6 +508,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
         private static final short CONNECTED = 1;
         private static final short TIMEOUT = 2;
         private static final short WRONG_PASSWORD = 3;
+        private static final short NOT_ENABLED = 4;
         private WeakReference<WiFiConnectivity> mRequester;
 
         public ConnectionCallbackHanlder(WiFiConnectivity Requester) {
@@ -559,8 +522,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
             if (requester == null) return;
             Log.d(TAG, "handleMessage");
             WiFi wifi = requester.mConnectWifi;
-            if (wifi == null)
-            {
+            if (wifi == null) {
                 Log.d(TAG, "invalid requester.mConnectWifi / null");
                 return;
             }
@@ -585,8 +547,19 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                     requester.initializeConnection();
                     requester.mConnectListener.onConnectionFailed(requester, wifi, FAILED_REASON_WRONG_PASSWORD);
                     break;
+                case NOT_ENABLED:
+                    Log.d(TAG, "NOT_ENABLED callback wifi info / " + (requester.mConnectWifi != null ? requester.mConnectWifi.toString() : "null"));
+                    requester.initializeConnection();
+                    requester.mConnectListener.onConnectionFailed(requester, wifi, FAILED_REASON_NOT_ENABLED);
+                    break;
             }
             Log.d(TAG, "handleMessage end");
+        }
+
+        public void notEnabledWifiFailed() {
+            Log.d(TAG, "send message NOT_ENABLED");
+            removeMessages(NOT_ENABLED);
+            sendEmptyMessageDelayed(NOT_ENABLED, SEND_MSG_DELAY_DEFAULT);
         }
 
         public void wrongPassword() {
@@ -617,7 +590,6 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
             removeMessages(DISCONNECTED);
             sendEmptyMessageDelayed(DISCONNECTED, SEND_MSG_DELAY_DEFAULT);
         }
-
 //        private void clear()
 //        {
 //            removeMessages(CONNECTED);
@@ -661,8 +633,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
         if (IsRequester(activity)) stopSelf();
     }
 
-    private boolean IsRequester(Context context)
-    {
+    private boolean IsRequester(Context context) {
         return (mRequester.get() == null) || (mRequester.get().hashCode() == context.hashCode());
     }
 }

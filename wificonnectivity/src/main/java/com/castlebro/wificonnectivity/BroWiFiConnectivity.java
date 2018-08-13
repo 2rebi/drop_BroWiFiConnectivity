@@ -1,5 +1,6 @@
 package com.castlebro.wificonnectivity;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -151,10 +152,11 @@ public class BroWiFiConnectivity {
                         null, null);
     }
 
+    @SuppressLint("HardwareIds")
     public static boolean isSameWiFi(WiFi wifi, WifiInfo wifiInfo) {
         return (wifi != null) && (wifiInfo != null) &&
                 innerIsSameWiFi(wifi.getSSID(), wifiInfo.getSSID(),
-                        wifi.getBSSID(), wifiInfo.getBSSID());
+                        wifi.getBSSID(), WiFi.isMacAddress(wifiInfo.getBSSID()) ? wifiInfo.getBSSID() : wifiInfo.getMacAddress());
     }
 
     public static boolean isSameWiFi(WiFi wifi, WifiConfiguration cwifi)

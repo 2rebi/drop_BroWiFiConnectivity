@@ -55,15 +55,15 @@ public class MainActivity extends AppCompatActivity {
                 .setRequestPermission(true)
                 .setScanListener((wifis) ->
                 {
-                    StringBuilder sb = new StringBuilder();
-//                    buf = "";
-//                    results = wifis;
-                    for (WiFi data : wifis) {
-                        sb.append("SSID / " + data.getSSID());
-                        sb.append("RSSI / " + data.getRSSI());
-                        sb.append("\n");
-                    }
-                    Name.setText(sb.toString());
+//                    StringBuilder sb = new StringBuilder();
+////                    buf = "";
+////                    results = wifis;
+//                    for (WiFi data : wifis) {
+//                        sb.append("SSID / " + data.getSSID());
+//                        sb.append("RSSI / " + data.getRSSI());
+//                        sb.append("\n");
+//                    }
+//                    Name.setText(sb.toString());
 //                    Name.setText(buf);
                     return false;
                 })
@@ -82,17 +82,17 @@ public class MainActivity extends AppCompatActivity {
                 .setConnectListener(new WiFiConnectListener() {
                     @Override
                     public void onConnected(IWiFiConnectivity IConnectivity, WiFi wifi) {
-                        //Name.setText(Name.getText() + "onConnected callback\n");
+                        Name.setText(Name.getText() + "onConnected callback\n");
                     }
 
                     @Override
                     public void onDisconnected(IWiFiConnectivity IConnectivity, WiFi wifi) {
-                        //Name.setText(Name.getText() + "onDisconnected callback\n");
+                        Name.setText(Name.getText() + "onDisconnected callback\n");
                     }
 
                     @Override
                     public void onConnectionFailed(IWiFiConnectivity IConnectivity, WiFi wifi, String reason) {
-                        //Name.setText(Name.getText() + "onFailed callback\n" + reason);
+                        Name.setText(Name.getText() + "onFailed callback\n" + reason);
                     }
                 })
                 .start();

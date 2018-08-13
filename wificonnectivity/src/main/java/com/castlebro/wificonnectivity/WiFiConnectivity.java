@@ -85,6 +85,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
     private int mWifiCurrentState = -1;
     private SupplicantState mSupplicantState = SupplicantState.DISCONNECTED;
     private NetworkInfo mWifiNetInfo = null;
+    private List<ScanResult> mScanResults = null;
 
     private WiFiConnectionState mWifiConnection = UNKNOWN;
     private WiFi mConnectWifi = null;
@@ -374,6 +375,13 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
         return isSupported() && hasRequester();
     }
 
+    private boolean isThereAp(WiFi wifi) {
+        for (ScanResult data : mScanResults) {
+            if (BroWiFiConnectivity.isSameWiFi(wifi, data)) return true;
+        }
+        return false;
+    }
+
     private void wifiProcessing() {
 
         if (mWifiConnection.getLevel() >= WiFiConnectionState.REQUEST_CONNECT.getLevel()) {
@@ -402,10 +410,18 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                         break;
                 }
             } else {
-                if (mWifiConnection.getLevel() >= CONNECTED.getLevel())
+                if (mWifiConnection.getLevel() >= CONNECTED.getLevel()) {
+                    mConnectionCallback.removeTimeout();
                     mConnectionCallback.disconnected();
-                else
+                }
+                else if (mConnectWifi.isScanResultType() &&
+                        !BroWiFiConnectivity.isThereScanList(mWifiManager, mConnectWifi)) {
+                    mConnectionCallback.removeTimeout();
+                    mConnectionCallback.wrongPassword();
+                }
+                else {
                     mConnectionCallback.setTimeout();
+                }
             }
         }
     }
@@ -438,12 +454,12 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                     wifiProcessing();
                     break;
                 case WifiManager.SCAN_RESULTS_AVAILABLE_ACTION:
-                    List<ScanResult> results = mWifiManager.getScanResults();
-                    Log.d(TAG, "getScanResults Size / " + String.valueOf(results.size()));
+                    List<ScanResult> mScanResults = mWifiManager.getScanResults();
+                    Log.d(TAG, "getScanResults Size / " + String.valueOf(mScanResults.size()));
                     if (mScanListener != null) {
                         Log.d(TAG, "ScanResults callback");
                         if (!mScanListener.ScanResults(
-                                WiFi.parseCollection(WiFiConnectivity.this, results)))
+                                WiFi.parseCollection(WiFiConnectivity.this, mScanResults)))
                             startScan();
                     }
                     break;

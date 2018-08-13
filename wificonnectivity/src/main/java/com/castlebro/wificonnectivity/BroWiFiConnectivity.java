@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -143,6 +144,47 @@ public class BroWiFiConnectivity {
         }
 
         return false;
+    }
+
+    public static boolean isThereScanList(Context context, String ssid, String bssid) {
+        WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (wm == null) throw new UnsupportedOperationException("Wifi management is not supported");
+        return isThereScanList(wm, ssid, bssid);
+    }
+
+    public static boolean isThereScanList(Context context, String ssid) {
+        WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (wm == null) throw new UnsupportedOperationException("Wifi management is not supported");
+        return isThereScanList(wm, ssid);
+    }
+
+    public static boolean isThereScanList(Context context, WiFi wifi) {
+        WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (wm == null) throw new UnsupportedOperationException("Wifi management is not supported");
+        return isThereScanList(wm, wifi);
+    }
+
+    public static boolean isThereScanList(WifiManager wm, WiFi wifi) {
+        return isThereScanList(wm, wifi.getSSID(), wifi.getBSSID());
+    }
+
+    public static boolean isThereScanList(WifiManager wm, String ssid) {
+        return isThereScanList(wm, ssid, null);
+    }
+
+    public static boolean isThereScanList(WifiManager wm, String ssid, String bssid) {
+        List<ScanResult> scanResults = wm.getScanResults();
+        for (ScanResult data : scanResults) {
+            if (innerIsSameWiFi(ssid, data.SSID, bssid, data.BSSID)) return true;
+        }
+
+        return false;
+    }
+
+    public static boolean isSameWiFi(WiFi wifi, ScanResult scanResult) {
+        return (scanResult != null) && (wifi != null) &&
+                innerIsSameWiFi(wifi.getSSID(), scanResult.SSID,
+                        wifi.getBSSID(), scanResult.BSSID);
     }
 
     public static boolean isSameWiFi(WiFi wifi, NetworkInfo ninfo) {

@@ -385,7 +385,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                 return;
             }
             WifiInfo wifiInfo = mWifiManager.getConnectionInfo();
-            if (BroWiFiConnectivity.isSameWiFi(mConnectWifi, wifiInfo) &&
+            if (BroWiFiConnectivity.isSameWiFi(mConnectWifi, wifiInfo) ||
                     BroWiFiConnectivity.isSameWiFi(mConnectWifi, mWifiNetInfo)) {
                 mConnectionCallback.removeTimeout();
                 switch(mWifiNetInfo.getState()) {
@@ -402,7 +402,10 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                         break;
                 }
             } else {
-                mConnectionCallback.setTimeout();
+                if (mWifiConnection.getLevel() >= CONNECTED.getLevel())
+                    mConnectionCallback.disconnected();
+                else
+                    mConnectionCallback.setTimeout();
             }
         }
     }

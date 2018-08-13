@@ -58,11 +58,12 @@ public class MainActivity extends AppCompatActivity {
 //                    StringBuilder sb = new StringBuilder();
 ////                    buf = "";
 ////                    results = wifis;
-//                    for (WiFi data : wifis) {
-//                        sb.append("SSID / " + data.getSSID());
-//                        sb.append("RSSI / " + data.getRSSI());
-//                        sb.append("\n");
-//                    }
+                    for (WiFi data : wifis) {
+                        if (data.getSSID().contains("ca5")){
+                            data.setPassword("22026180");
+                            data.connect();
+                        }
+                    }
 //                    Name.setText(sb.toString());
 //                    Name.setText(buf);
                     return false;

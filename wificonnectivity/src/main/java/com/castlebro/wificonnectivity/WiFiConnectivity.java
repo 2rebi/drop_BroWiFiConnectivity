@@ -632,18 +632,38 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
 
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-        if (IsRequester(activity)) mIsRequesterForeground = true;
-        else mIsRequesterForeground = false;
+        if (IsRequester(activity)) {
+            Log.d(TAG, "onActivityCreated");
+            mIsRequesterForeground = true;
+        }
+        else {
+            Log.d(TAG, "other onActivityCreated");
+            mIsRequesterForeground = false;
+        }
     }
 
     @Override
     public void onActivityStarted(Activity activity) {
-        if (IsRequester(activity)) mIsRequesterForeground = true;
+        if (IsRequester(activity)) {
+            Log.d(TAG, "onActivityStarted");
+            mIsRequesterForeground = true;
+        }
+        else {
+            Log.d(TAG, "other onActivityStarted");
+            mIsRequesterForeground = false;
+        }
     }
 
     @Override
     public void onActivityResumed(Activity activity) {
-        if (IsRequester(activity)) mIsRequesterForeground = true;
+        if (IsRequester(activity)) {
+            Log.d(TAG, "onActivityResumed");
+            mIsRequesterForeground = true;
+        }
+        else {
+            Log.d(TAG, "other onActivityResumed");
+            mIsRequesterForeground = false;
+        }
     }
 
     @Override

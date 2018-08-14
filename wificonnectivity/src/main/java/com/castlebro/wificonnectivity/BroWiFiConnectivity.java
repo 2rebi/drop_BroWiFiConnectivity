@@ -42,6 +42,7 @@ public class BroWiFiConnectivity {
 
     public static void forceStopService() {
         if (mRunService != null && mRunService.get() != null) {
+            Log.d(WiFiConnectivity.class.getSimpleName(), "forceStopService");
             WiFiConnectivity connectivity = mRunService.get();
             connectivity.onRelease();
             connectivity.stopSelf();

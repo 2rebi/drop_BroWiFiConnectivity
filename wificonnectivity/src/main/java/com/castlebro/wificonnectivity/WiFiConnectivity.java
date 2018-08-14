@@ -119,6 +119,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
     @Override
     public void onCreate() {
         super.onCreate();
+        BroWiFiConnectivity.setRunService(this);
         Log.d(TAG, "onCreate");
     }
 
@@ -184,7 +185,8 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
         //Maybe Deprecated on API 28 Level
         intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
 
-        registerReceiver(mReceiver, intentFilter);
+        if (mReceiver != null)
+            registerReceiver(mReceiver, intentFilter);
 
         setEnableWifi(mWifiState);
         if (mWifiState != WIFI_STATE_DEFAULT_DIALOG)
@@ -197,10 +199,21 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
         return Service.START_NOT_STICKY;
     }
 
+    void onRelease() {
+        mScanListener = null;
+        mStateListener = null;
+        mConnectListener = null;
+        mDebugListener = null;
+        if (mReceiver != null) {
+            unregisterReceiver(mReceiver);
+            mReceiver = null;
+        }
+        getApplication().unregisterActivityLifecycleCallbacks(this);
+    }
+
     @Override
     public void onDestroy() {
-        unregisterReceiver(mReceiver);
-        getApplication().unregisterActivityLifecycleCallbacks(this);
+        onRelease();
         super.onDestroy();
     }
 

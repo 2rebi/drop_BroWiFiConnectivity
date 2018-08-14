@@ -12,12 +12,15 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
+import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
 public class BroWiFiConnectivity {
+
+    private static WeakReference<WiFiConnectivity> mRunService = null;
 
     private Context mContext;
     private boolean mIsRequestPermission = false;
@@ -31,6 +34,19 @@ public class BroWiFiConnectivity {
 
     private BroWiFiConnectivity() {
 
+    }
+
+    static void setRunService(WiFiConnectivity wiFiConnectivity) {
+        mRunService = new WeakReference<>(wiFiConnectivity);
+    }
+
+    public static void forceStopService() {
+        if (mRunService != null && mRunService.get() != null) {
+            WiFiConnectivity connectivity = mRunService.get();
+            connectivity.onRelease();
+            connectivity.stopSelf();
+            mRunService = null;
+        }
     }
 
     public static BroWiFiConnectivity contact(Context context) {

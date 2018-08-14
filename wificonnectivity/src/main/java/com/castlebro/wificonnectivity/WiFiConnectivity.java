@@ -620,6 +620,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
         if (IsRequester(activity)) mIsRequesterForeground = true;
+        else mIsRequesterForeground = false;
     }
 
     @Override
@@ -634,12 +635,10 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
 
     @Override
     public void onActivityPaused(Activity activity) {
-        if (IsRequester(activity)) mIsRequesterForeground = false;
     }
 
     @Override
     public void onActivityStopped(Activity activity) {
-        if (IsRequester(activity)) mIsRequesterForeground = false;
     }
 
     @Override

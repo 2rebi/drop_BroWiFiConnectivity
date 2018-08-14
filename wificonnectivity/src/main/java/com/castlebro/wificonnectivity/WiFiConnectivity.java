@@ -125,6 +125,8 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
+        BroWiFiConnectivity.setRunService(this);
+
         mIsRequesterForeground = true;
         Log.d(TAG, "onStartCommand");
 
@@ -201,6 +203,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
     public void onDestroy() {
         unregisterReceiver(mReceiver);
         getApplication().unregisterActivityLifecycleCallbacks(this);
+        BroWiFiConnectivity.setRunService(null);
         super.onDestroy();
     }
 
@@ -626,11 +629,13 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
     @Override
     public void onActivityStarted(Activity activity) {
         if (IsRequester(activity)) mIsRequesterForeground = true;
+        else mIsRequesterForeground = false;
     }
 
     @Override
     public void onActivityResumed(Activity activity) {
         if (IsRequester(activity)) mIsRequesterForeground = true;
+        else mIsRequesterForeground = false;
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.castlebro.wificonnectivity;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
@@ -12,12 +13,15 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
+import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
 public class BroWiFiConnectivity {
+
+    private static WeakReference<Service> CurrentRunService = null;
 
     private Context mContext;
     private boolean mIsRequestPermission = false;
@@ -31,6 +35,12 @@ public class BroWiFiConnectivity {
 
     private BroWiFiConnectivity() {
 
+    }
+
+    public static void serviceForceStop() {
+        if (CurrentRunService != null && CurrentRunService.get() != null)
+            CurrentRunService.get().stopSelf();
+        CurrentRunService = null;
     }
 
     public static BroWiFiConnectivity contact(Context context) {
@@ -308,5 +318,14 @@ public class BroWiFiConnectivity {
                         putExtra(WiFiConnectivity.START_SCAN, mIsStartScan).
                         putExtra(WiFiConnectivity.CONNECT_WIFI, connectWifi),
                 mScanListener, mStateListener, mConnectListener, mDebugListener);
+    }
+
+
+    static void onRelease() {
+        CurrentRunService = null;
+    }
+
+    static void setRunService(Service service) {
+        CurrentRunService = new WeakReference<>(service);
     }
 }

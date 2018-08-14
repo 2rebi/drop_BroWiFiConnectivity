@@ -33,7 +33,6 @@ public class BroWiFiConnectivity {
     private WiFiDebugListener mDebugListener;
 
     private BroWiFiConnectivity() {
-
     }
 
     static void setRunService(WiFiConnectivity wiFiConnectivity) {

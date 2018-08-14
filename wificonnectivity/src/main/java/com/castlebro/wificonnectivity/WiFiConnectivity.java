@@ -632,38 +632,18 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
 
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-        if (IsRequester(activity)) {
-            Log.d(TAG, "onActivityCreated");
-            mIsRequesterForeground = true;
-        }
-        else {
-            Log.d(TAG, "other onActivityCreated");
-            mIsRequesterForeground = false;
-        }
+        if (IsRequester(activity)) mIsRequesterForeground = true;
+        else mIsRequesterForeground = false;
     }
 
     @Override
     public void onActivityStarted(Activity activity) {
-        if (IsRequester(activity)) {
-            Log.d(TAG, "onActivityStarted");
-            mIsRequesterForeground = true;
-        }
-        else {
-            Log.d(TAG, "other onActivityStarted");
-            mIsRequesterForeground = false;
-        }
+        if (IsRequester(activity)) mIsRequesterForeground = true;
     }
 
     @Override
     public void onActivityResumed(Activity activity) {
-        if (IsRequester(activity)) {
-            Log.d(TAG, "onActivityResumed");
-            mIsRequesterForeground = true;
-        }
-        else {
-            Log.d(TAG, "other onActivityResumed");
-            mIsRequesterForeground = false;
-        }
+        if (IsRequester(activity)) mIsRequesterForeground = true;
     }
 
     @Override
@@ -681,7 +661,10 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
 
     @Override
     public void onActivityDestroyed(Activity activity) {
-        if (IsRequester(activity)) stopSelf();
+        if (IsRequester(activity)) {
+            onRelease();
+            stopSelf();
+        }
     }
 
     private boolean IsRequester(Context context) {

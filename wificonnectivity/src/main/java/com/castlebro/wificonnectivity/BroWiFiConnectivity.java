@@ -10,13 +10,12 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
+import android.provider.Settings;
 import android.util.Log;
 
 import java.lang.ref.WeakReference;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
-import java.util.regex.Pattern;
 
 public class BroWiFiConnectivity {
 
@@ -49,45 +48,63 @@ public class BroWiFiConnectivity {
         }
     }
 
+    public static void openWiFiSetting(Activity activity) {
+        activity.startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+    }
+
+    public static boolean isAutoNetworkEnabledOpenSetting(Context context) {
+        if (context instanceof Activity) {
+            if (isAutoNetworkEnabled(context)) {
+                openWiFiSetting((Activity) context);
+                return true;
+            }
+        } else {
+            throw new UnsupportedOperationException("context not activity");
+        }
+        return false;
+    }
+
+    public static boolean isAutoNetworkEnabled(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            return Settings.Global.getInt(context.getContentResolver(), "wifi_watchdog_poor_network_test_enabled", 0) == 1;
+        }
+        return false;
+    }
+
     public static BroWiFiConnectivity contact(Context context) {
         BroWiFiConnectivity wifi = new BroWiFiConnectivity();
         wifi.mContext = context;
         return wifi;
     }
 
-    public static boolean disconnectCurrentWiFi(Context context)
-    {
+    public static boolean disconnectCurrentWiFi(Context context) {
         WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wm == null) throw new UnsupportedOperationException("Wifi management is not supported");
         return disconnectCurrentWiFi(wm);
     }
 
-    public static boolean disconnectCurrentWiFi(WifiManager wm)
-    {
+    public static boolean disconnectCurrentWiFi(WifiManager wm) {
         return wm.disconnect();
     }
 
-    public static boolean isConnected(Context context, String ssid)
-    {
+    public static boolean isConnected(Context context, String ssid) {
         return isConnected(context, ssid, null);
     }
 
-    public static boolean isConnected(Context context, WiFi wifi)
-    {
+    public static boolean isConnected(Context context, WiFi wifi) {
         return isConnected(context, wifi.getSSID(), wifi.getBSSID());
     }
 
-    public static boolean isConnected(Context context, String ssid, String bssid)
-    {
+    public static boolean isConnected(Context context, String ssid, String bssid) {
         WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         ConnectivityManager cm = (ConnectivityManager) context.getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         if (wm == null) throw new UnsupportedOperationException("WIFI_SERVICE is not supported");
-        if (cm == null) throw new UnsupportedOperationException("CONNECTIVITY_SERVICE is not supported");
+        if (cm == null)
+            throw new UnsupportedOperationException("CONNECTIVITY_SERVICE is not supported");
         return isConnected(wm, cm, ssid, bssid);
     }
 
-    public static boolean isConnected(WifiManager wm, ConnectivityManager cm, String ssid, String bssid)
-    {
+    public static boolean isConnected(WifiManager wm, ConnectivityManager cm, String ssid, String bssid) {
         WifiInfo info = wm.getConnectionInfo();
         NetworkInfo networkInfo = cm.getActiveNetworkInfo();
         if ((info == null) || (networkInfo == null) ||
@@ -97,34 +114,28 @@ public class BroWiFiConnectivity {
                 Helper.convertWifiConnection(networkInfo, info.getSupplicantState()) == WiFiConnectionState.CONNECTED;
     }
 
-    public static int getConfiguredNetworkId(Context context, WiFi wifi)
-    {
-        return  getConfiguredNetworkId(context, wifi.getSSID(), wifi.getBSSID());
+    public static int getConfiguredNetworkId(Context context, WiFi wifi) {
+        return getConfiguredNetworkId(context, wifi.getSSID(), wifi.getBSSID());
     }
 
-    public static int getConfiguredNetworkId(Context context, String ssid)
-    {
+    public static int getConfiguredNetworkId(Context context, String ssid) {
         return getConfiguredNetworkId(context, ssid, null);
     }
 
-    public static int getConfiguredNetworkId(Context context, String ssid, String bssid)
-    {
+    public static int getConfiguredNetworkId(Context context, String ssid, String bssid) {
         WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wm == null) throw new UnsupportedOperationException("Wifi management is not supported");
         return getConfiguredNetworkId(wm, ssid, bssid);
     }
 
-    public static int getConfiguredNetworkId(WifiManager wm, WiFi wifi)
-    {
+    public static int getConfiguredNetworkId(WifiManager wm, WiFi wifi) {
         return getConfiguredNetworkId(wm, wifi.getSSID(), wifi.getBSSID());
     }
 
-    public static int getConfiguredNetworkId(WifiManager wm, String ssid, String bssid)
-    {
+    public static int getConfiguredNetworkId(WifiManager wm, String ssid, String bssid) {
         List<WifiConfiguration> configurationList = GetConfiguredNetworks(wm);
         if (configurationList == null) return -1;
-        for(WifiConfiguration cwifi : configurationList)
-        {
+        for (WifiConfiguration cwifi : configurationList) {
             if (innerIsSameWiFi(ssid, cwifi.SSID,
                     bssid, cwifi.BSSID))
                 return cwifi.networkId;
@@ -133,29 +144,24 @@ public class BroWiFiConnectivity {
         return -1;
     }
 
-    public static boolean isConfiguredNetwork(Context context, WiFi wifi)
-    {
+    public static boolean isConfiguredNetwork(Context context, WiFi wifi) {
         return isConfiguredNetwork(context, wifi.getSSID(), wifi.getBSSID());
     }
 
-    public static boolean isConfiguredNetwork(Context context, String ssid)
-    {
+    public static boolean isConfiguredNetwork(Context context, String ssid) {
         return isConfiguredNetwork(context, ssid, null);
     }
 
-    public static boolean isConfiguredNetwork(Context context, String ssid, String bssid)
-    {
+    public static boolean isConfiguredNetwork(Context context, String ssid, String bssid) {
         WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wm == null) throw new UnsupportedOperationException("Wifi management is not supported");
         return isConfiguredNetwork(wm, ssid, bssid);
     }
 
-    public static boolean isConfiguredNetwork(WifiManager wm, String ssid, String bssid)
-    {
+    public static boolean isConfiguredNetwork(WifiManager wm, String ssid, String bssid) {
         List<WifiConfiguration> configurationList = GetConfiguredNetworks(wm);
         if (configurationList == null) return false;
-        for(WifiConfiguration cwifi : configurationList)
-        {
+        for (WifiConfiguration cwifi : configurationList) {
             if (innerIsSameWiFi(ssid, cwifi.SSID, bssid, cwifi.BSSID)) return true;
         }
 
@@ -217,25 +223,22 @@ public class BroWiFiConnectivity {
                         wifi.getBSSID(), WiFi.isMacAddress(wifiInfo.getBSSID()) ? wifiInfo.getBSSID() : wifiInfo.getMacAddress());
     }
 
-    public static boolean isSameWiFi(WiFi wifi, WifiConfiguration cwifi)
-    {
+    public static boolean isSameWiFi(WiFi wifi, WifiConfiguration cwifi) {
         return (wifi != null) && (cwifi != null) &&
                 innerIsSameWiFi(wifi.getSSID(), cwifi.SSID,
-                wifi.getBSSID(), cwifi.BSSID);
+                        wifi.getBSSID(), cwifi.BSSID);
     }
 
-    public static boolean isSameWiFi(WiFi lWifi, WiFi rWifi)
-    {
+    public static boolean isSameWiFi(WiFi lWifi, WiFi rWifi) {
         return (lWifi != null) && (rWifi != null) &&
                 innerIsSameWiFi(lWifi.getSSID(), rWifi.getSSID(),
-                lWifi.getBSSID(), rWifi.getBSSID());
+                        lWifi.getBSSID(), rWifi.getBSSID());
     }
 
-    private static boolean innerIsSameWiFi(String lSsid, String rSsid, String lBssid, String rBssid)
-    {
+    private static boolean innerIsSameWiFi(String lSsid, String rSsid, String lBssid, String rBssid) {
         if ((lSsid == null) || (rSsid == null)) return false;
-        lSsid = lSsid.replaceAll("\"" , "");
-        rSsid = rSsid.replaceAll("\"" , "");
+        lSsid = lSsid.replaceAll("\"", "");
+        rSsid = rSsid.replaceAll("\"", "");
         lBssid = WiFi.isMacAddress(lBssid) ? lBssid : null;
         rBssid = WiFi.isMacAddress(rBssid) ? rBssid : null;
         if ((lBssid == null) || (rBssid == null))
@@ -243,22 +246,17 @@ public class BroWiFiConnectivity {
         return lSsid.equals(rSsid) && lBssid.equals(rBssid);
     }
 
-    public static List<WifiConfiguration> GetConfiguredNetworks(Context context)
-    {
+    public static List<WifiConfiguration> GetConfiguredNetworks(Context context) {
         WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (wm == null) throw new UnsupportedOperationException("Wifi management is not supported");
         return GetConfiguredNetworks(wm);
     }
 
-    public static List<WifiConfiguration> GetConfiguredNetworks(WifiManager wm)
-    {
+    public static List<WifiConfiguration> GetConfiguredNetworks(WifiManager wm) {
         List<WifiConfiguration> configurationList = null;
-        try
-        {
+        try {
             configurationList = wm.getConfiguredNetworks();
-        }
-        catch (NullPointerException ignored)
-        {
+        } catch (NullPointerException ignored) {
             Log.e(BroWiFiConnectivity.class.getSimpleName(), ignored.getMessage());
             Log.e(BroWiFiConnectivity.class.getSimpleName(), ignored.getLocalizedMessage());
             return null;
@@ -268,7 +266,8 @@ public class BroWiFiConnectivity {
     }
 
     public BroWiFiConnectivity setRequestPermission(boolean isRequestPermission) {
-        if (!(mContext instanceof Activity)) throw new IllegalStateException("if you use this Method, BroWiFiConnectivity.contact method argument must be Activity");
+        if (!(mContext instanceof Activity))
+            throw new IllegalStateException("if you use this Method, BroWiFiConnectivity.contact method argument must be Activity");
         mIsRequestPermission = isRequestPermission;
         return this;
     }
@@ -299,8 +298,7 @@ public class BroWiFiConnectivity {
         return this;
     }
 
-    public BroWiFiConnectivity setDebugListener(WiFiDebugListener debugListener)
-    {
+    public BroWiFiConnectivity setDebugListener(WiFiDebugListener debugListener) {
         mDebugListener = debugListener;
         return this;
     }
@@ -314,8 +312,7 @@ public class BroWiFiConnectivity {
         start(null);
     }
 
-    public void start(WiFi connectWifi)
-    {
+    public void start(WiFi connectWifi) {
         WiFiConnectivity.StartService(mContext,
                 new Intent(mContext, WiFiConnectivity.class).
                         putExtra(WiFiConnectivity.REQUESTER_CONTEXT, String.valueOf(mContext.hashCode())).

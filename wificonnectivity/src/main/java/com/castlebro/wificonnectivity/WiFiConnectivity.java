@@ -11,7 +11,11 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
+import android.net.LinkProperties;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
+import android.net.NetworkRequest;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
@@ -22,6 +26,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
 import android.text.Html;
 import android.util.Log;
 
@@ -30,10 +35,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static android.net.wifi.WifiManager.EXTRA_SUPPLICANT_CONNECTED;
 import static com.castlebro.wificonnectivity.WiFiConnectionState.CONNECTED;
 import static com.castlebro.wificonnectivity.WiFiConnectionState.CONNECTED_DONE;
 import static com.castlebro.wificonnectivity.WiFiConnectionState.CONNECTING;
-import static com.castlebro.wificonnectivity.WiFiConnectionState.DISCONNECTED;
 import static com.castlebro.wificonnectivity.WiFiConnectionState.REQUEST_CONNECT;
 import static com.castlebro.wificonnectivity.WiFiConnectionState.UNKNOWN;
 
@@ -89,6 +94,8 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
 
     private WiFiConnectionState mWifiConnection = UNKNOWN;
     private WiFi mConnectWifi = null;
+
+    private ConnectivityManager.NetworkCallback mNetworkCallback = null;
 
     static void StartService(Context context, Intent intent,
                              WiFiScanListener scanListener,
@@ -180,6 +187,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
         intentFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         intentFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
         intentFilter.addAction(WifiManager.SUPPLICANT_STATE_CHANGED_ACTION);
+        intentFilter.addAction(WifiManager.NETWORK_IDS_CHANGED_ACTION);
 
         //Todo
         //Maybe Deprecated on API 28 Level
@@ -187,6 +195,29 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
 
         if (mReceiver != null)
             registerReceiver(mReceiver, intentFilter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            if (mNetworkCallback != null)
+                mConnectivityManager.unregisterNetworkCallback(mNetworkCallback);
+
+            mNetworkCallback = new ConnectivityManager.NetworkCallback() {
+                @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+                @Override
+                public void onAvailable(Network network) {
+                    NetworkInfo networkInfo = mConnectivityManager.getNetworkInfo(network);
+                    if (!BroWiFiConnectivity.isSameWiFi(mConnectWifi, networkInfo)) return;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        mConnectivityManager.bindProcessToNetwork(network);
+                    } else {
+                        ConnectivityManager.setProcessDefaultNetwork(network);
+                    }
+                }
+            };
+            mConnectivityManager.requestNetwork(new NetworkRequest.Builder()
+                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build(), mNetworkCallback);
+        } else {
+            mConnectivityManager.setNetworkPreference(ConnectivityManager.TYPE_WIFI);
+        }
+
 
         setEnableWifi(mWifiState);
         if (mWifiState != WIFI_STATE_DEFAULT_DIALOG)
@@ -207,6 +238,10 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
         if (mReceiver != null) {
             unregisterReceiver(mReceiver);
             mReceiver = null;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && mNetworkCallback != null) {
+            mConnectivityManager.unregisterNetworkCallback(mNetworkCallback);
+            mNetworkCallback = null;
         }
         getApplication().unregisterActivityLifecycleCallbacks(this);
     }
@@ -409,7 +444,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
             if (BroWiFiConnectivity.isSameWiFi(mConnectWifi, wifiInfo) ||
                     BroWiFiConnectivity.isSameWiFi(mConnectWifi, mWifiNetInfo)) {
                 mConnectionCallback.removeTimeout();
-                switch(mWifiNetInfo.getState()) {
+                switch (mWifiNetInfo.getState()) {
                     case DISCONNECTED:
                         if (mWifiConnection == CONNECTING) {
                             mConnectionCallback.wrongPassword();
@@ -426,13 +461,11 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                 if (mWifiConnection.getLevel() >= CONNECTED.getLevel()) {
                     mConnectionCallback.removeTimeout();
                     mConnectionCallback.disconnected();
-                }
-                else if (mConnectWifi.isScanResultType() &&
+                } else if (mConnectWifi.isScanResultType() &&
                         !BroWiFiConnectivity.isThereScanList(mWifiManager, mConnectWifi)) {
                     mConnectionCallback.removeTimeout();
                     mConnectionCallback.wrongPassword();
-                }
-                else {
+                } else {
                     mConnectionCallback.setTimeout();
                 }
             }
@@ -466,6 +499,9 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                     }
                     wifiProcessing();
                     break;
+                case WifiManager.NETWORK_IDS_CHANGED_ACTION:
+                    Log.d(TAG, "NETWORK_IDS_CHANGED_ACTION");
+                    break;
                 case WifiManager.SCAN_RESULTS_AVAILABLE_ACTION:
                     List<ScanResult> mScanResults = mWifiManager.getScanResults();
                     Log.d(TAG, "getScanResults Size / " + String.valueOf(mScanResults.size()));
@@ -479,7 +515,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                 case ConnectivityManager.CONNECTIVITY_ACTION:
                     if (mWifiConnection != CONNECTED) break;
                     Log.d(TAG, "Connected Success");
-                    if (BroWiFiConnectivity.isSameWiFi(mConnectWifi, mConnectivityManager.getActiveNetworkInfo())) {
+                    if (BroWiFiConnectivity.isSameWiFi(mConnectWifi, mWifiManager.getConnectionInfo())) {
                         Log.d(TAG, "Active NetworkInfo type is TYPE_WIFI");
                         Log.d(TAG, "connected callback");
                         mConnectionCallback.connected();
@@ -498,6 +534,7 @@ public class WiFiConnectivity extends Service implements IWiFiConnectivity, Appl
                     wifiProcessing();
                     break;
             }
+
 //            if (true)
 //                return;
 //            Log.d(TAG, "WifiManager Detail Information");
